@@ -1,7 +1,7 @@
 import { useState } from "react"
 import Contact from "./components/Contacts"
-import axios from "axios"
 import { useEffect } from "react"
+import personService from "./services/persons"
 
 function App() {
 
@@ -9,46 +9,33 @@ function App() {
   const [name, setName] = useState('')
   const [number, setNumber] = useState('')
 
-  const handleName = (e) => {
-    e.preventDefault()
-    setName(e.target.value)
-  }
-
-  const handleNumber = (e) => {
-    e.preventDefault()
-    setNumber(e.target.value)
-  }
+  useEffect(() => {
+    personService.getAll().then(initialPersons => {
+      setPersons(initialPersons)
+    })
+  }, [])
 
   const handleSubmit = (e) => {
     e.preventDefault()
-    const newObj = {
-      name: name,
-      number: number
-    }
-    axios.post('http://localhost:3001/api/persons/', newObj)
-      .then(response => {
-        console.log('Added', response.data)
-        setPersons(persons.concat(response.data))
-        setName('')
-        setNumber('')
-      })
-  }
+    const newObj = { name, number }
 
-  useEffect(() => {
-    axios.get('http://localhost:3001/api/persons/')
-      .then(response => setPersons(response.data))
-  }, [])
+    personService.create(newObj).then(returnedPerson => {
+      setPersons(persons.concat(returnedPerson))
+      setName('')
+      setNumber('')
+    })
+  }
 
   const handleDelete = (id, name) => {
     if(window.confirm(`Delete ${name}`)) {
-      axios.delete(`http://localhost:3001/api/persons/${id}`)
-      .then( () =>{
-        setPersons(persons.filter(i => i.id !== id))
-      })
-      .catch(error => {
-        alert("This person is already deleted from phonebook")
-        setPersons(persons.filter(i => i.id !== id))
-      })
+      personService.remove(id)
+        .then(() => {
+          setPersons(persons.filter(p => p.id !== id))
+        })
+        .catch(() => {
+          alert("This person is already deleted from phonebook")
+          setPersons(persons.filter(p => p.id !== id))
+        })
     }
   }
 
@@ -64,7 +51,7 @@ function App() {
       <h3>Phonebook</h3>
       <ul style={{ listStyleType: 'none', padding: 0 }}>
         {persons.map(person => (
-          <li key={person.name}>
+          <li key={person.id}>
             <Contact name={person.name} number={person.number} />
             <button onClick={() => handleDelete(person.id, person.name)}>delete</button>
             <hr/>

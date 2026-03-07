@@ -1,9 +1,16 @@
 const express = require("express")
 const cors = require("cors")
 const app = express()
+const morgan = require('morgan')
 app.set('json spaces', 2)
 app.use(express.json())
 app.use(cors())
+app.use(express.static('dist'))
+
+morgan.token('body', (req, res) => {
+  return JSON.stringify(req.body)
+})
+app.use(morgan(':method :url :status :res[content-length] - :response-time ms :body'))
 
 let persons = [
 	{
@@ -29,7 +36,11 @@ app.get('/api/persons', (req, res) => {
 app.get('/api/persons/:id', (req, res) => {
 	const id = req.params.id
 	const item = persons.find(i => i.id === id)
-	res.json(item)
+	if (item) {
+        res.json(item)
+    } else {
+        res.status(404).end()
+    }
 })
 
 const generateId = () => {
@@ -42,11 +53,11 @@ const generateId = () => {
 app.post('/api/persons', (req, res) => {
 	const body = req.body
 	if (!body.name || !body.number) {
-		res.send(400).json({ "error": "Content missing" })
+		return res.status(400).json({ "error": "Content missing" })
 	}
 	if (persons.some(p => p.name === body.name)) {
-    return res.status(400).json({ error: "name must be unique" })
-  }
+		return res.status(400).json({ error: "name must be unique" })
+	}
 
 	const newObj = {
 		id: generateId(),
@@ -60,16 +71,16 @@ app.post('/api/persons', (req, res) => {
 app.delete('/api/persons/:id', (req, res) => {
 	const id = req.params.id
 	const exists = persons.some(p => p.id === id)
-	if(exists){
+	if (exists) {
 		persons = persons.filter(i => i.id !== id)
 		res.status(204).end()
 	}
-	else{
-		res.status(404).json({"message": "Id do not exist"})
+	else {
+		res.status(404).json({ "message": "Id do not exist" })
 	}
 })
 
-const PORT = 3001
+const PORT = process.env.PORT || 3001
 app.listen(PORT, () => {
 	console.log(`Server running on port http://localhost:${PORT}`)
 })
