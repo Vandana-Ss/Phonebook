@@ -11,9 +11,21 @@ function App() {
 
   useEffect(() => {
     personService.getAll().then(initialPersons => {
-      setPersons(initialPersons)
+      if (Array.isArray(initialPersons)) {
+        setPersons(initialPersons)
+      } else {
+        console.error("Data received is not an array:", initialPersons)
+      }
     })
   }, [])
+
+  const handleName = (e) => {
+    setName(e.target.value)
+  }
+
+  const handleNumber = (e) => {
+    setNumber(e.target.value)
+  }
 
   const handleSubmit = (e) => {
     e.preventDefault()
@@ -27,7 +39,7 @@ function App() {
   }
 
   const handleDelete = (id, name) => {
-    if(window.confirm(`Delete ${name}`)) {
+    if (window.confirm(`Delete ${name}`)) {
       personService.remove(id)
         .then(() => {
           setPersons(persons.filter(p => p.id !== id))
@@ -54,7 +66,7 @@ function App() {
           <li key={person.id}>
             <Contact name={person.name} number={person.number} />
             <button onClick={() => handleDelete(person.id, person.name)}>delete</button>
-            <hr/>
+            <hr />
           </li>
         ))}
       </ul>
