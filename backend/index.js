@@ -3,23 +3,12 @@ const express = require("express")
 const cors = require("cors")
 const app = express()
 const morgan = require('morgan')
-const mongoose = require("mongoose")
+const PhoneBook = require('./models/person.js')
 app.set('json spaces', 2)
 app.use(express.json())
 app.use(cors())
 app.use(express.static('dist'))
 
-const password = process.argv[2]
-const url = process.env.MONGODB_URI
-mongoose.set('strictQuery', false)
-mongoose.connect(url, { family: 4 })
-
-const phonebookSchema = new mongoose.Schema({
-	name: String,
-	number: String
-})
-
-const PhoneBook = mongoose.model('Phonebook', phonebookSchema)
 
 morgan.token('body', (req, res) => {
 	return JSON.stringify(req.body)
@@ -30,16 +19,15 @@ app.get('/api/persons', (req, res) => {
 	PhoneBook.find({}).then(result => res.json(result))
 })
 
-app.get('/api/persons/:id', (req, res) => {
+app.get('/api/persons/:id', (req, res, next) => {
 	const id = req.params.id
-	const item = persons.find(i => i.id === id)
-	PhoneBook.findById(req.params.id).then(person => {
+	PhoneBook.findById(id).then(person => {
 		if (person) {
 			res.json(person)
 		} else {
 			res.status(404).end()
 		}
-	})
+	}).catch(error => next(error))
 })
 
 app.post('/api/persons', (req, res) => {
@@ -54,13 +42,32 @@ app.post('/api/persons', (req, res) => {
 	person.save().then(savedPersons => res.json(savedPersons))
 })
 
-app.delete('/api/persons/:id', (req, res) => {
+app.delete('/api/persons/:id', (req, res, next) => {
 	const id = req.params.id
 	PhoneBook.findByIdAndDelete(id)
-	.then(result => {
-		res.status(204).end
-	})
+		.then(result => {
+			res.status(204).end()
+		}).catch(error => next(error))
 })
+
+const unknownEndpoint = (request, response) => {
+  response.status(404).send({ error: 'unknown endpoint' })
+}
+app.use(unknownEndpoint)
+
+const errorHandler = (error, request, response, next) => {
+  console.error(error.message)
+
+  if (error.name === 'CastError') {
+    return response.status(400).send({ error: 'malformatted id' })
+  } 
+  else if (error.name === 'ValidationError') {
+	return response.status(400).json({error: error.message})
+  }
+
+  next(error)
+}
+app.use(errorHandler)
 
 const PORT = process.env.PORT || 3001
 app.listen(PORT, () => {
